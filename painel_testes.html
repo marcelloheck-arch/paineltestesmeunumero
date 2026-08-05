@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Testes — Cardiocenter</title>
+<style>
+  :root {
+    --azul: #1A5276;
+    --verde: #2E7D32;
+    --cinza-borda: #E0E3E7;
+    --cinza-texto: #5A5A5A;
+    --branco: #FFFFFF;
+    --fundo: #F5F6F8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--fundo);
+    margin: 0;
+    padding: 24px;
+    color: #1c1c1c;
+  }
+  h1 {
+    font-size: 20px;
+    color: var(--azul);
+    margin: 0 0 4px 0;
+  }
+  .subtitulo {
+    color: var(--cinza-texto);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  #login-box {
+    max-width: 360px;
+    margin: 80px auto;
+    background: var(--branco);
+    border: 1.5px solid var(--cinza-borda);
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+  }
+  #login-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px solid var(--cinza-borda);
+    border-radius: 8px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  #login-box button, .btn {
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #login-box button:hover, .btn:hover { opacity: 0.9; }
+  #painel { display: none; }
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--branco);
+    border-radius: 14px;
+    border: 1.5px solid var(--cinza-borda);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .card-header {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--cinza-borda);
+  }
+  .card-header .nome { font-weight: 600; }
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .badge.novo { background: #E3F2FD; color: #1565C0; }
+  .badge.duvida_valor { background: #FFF3E0; color: #E65100; }
+  .badge.cancelamento { background: #FFEBEE; color: #C62828; }
+  .badge.remarcacao { background: #F3E5F5; color: #6A1B9A; }
+  .badge.concluido { background: #E8F5E9; color: #2E7D32; }
+  .card-body {
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 13px;
+    flex: 1;
+    align-content: start;
+  }
+  .campo label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--cinza-texto);
+    letter-spacing: 0.03em;
+  }
+  .campo .valor { font-weight: 500; }
+  .campo.full { grid-column: 1 / -1; }
+  .card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--cinza-borda);
+    margin-top: auto;
+  }
+  .vazio {
+    text-align: center;
+    color: var(--cinza-texto);
+    padding: 60px 0;
+  }
+  .erro { color: #C62828; font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="login-box">
+  <h1>Painel de Testes</h1>
+  <div class="subtitulo">Só cards do número de teste — acesso restrito</div>
+  <input type="password" id="input-token" placeholder="Cole o token de acesso">
+  <br>
+  <button onclick="entrar()">Entrar</button>
+  <div class="erro" id="erro-login"></div>
+</div>
+
+<div id="painel">
+  <div class="toolbar">
+    <div>
+      <h1>Painel de Testes — Cardiocenter</h1>
+      <div class="subtitulo">Mostrando apenas o número 5548988720983</div>
+    </div>
+    <button class="btn" onclick="carregar()">Atualizar</button>
+  </div>
+  <div class="lista" id="lista"></div>
+</div>
+
+<script>
+// URL do webhook n8n (path: painel-testes-cardiocenter)
+const WEBHOOK_URL = "https://coldbloodedchameleon-n8n.cloudfy.live/webhook/painel-testes-cardiocenter";
+
+let TOKEN = "";
+
+function entrar() {
+  const valor = document.getElementById('input-token').value.trim();
+  if (!valor) return;
+  TOKEN = valor;
+  document.getElementById('login-box').style.display = 'none';
+  document.getElementById('painel').style.display = 'block';
+  carregar();
+}
+
+async function chamar(acao, extra = {}) {
+  const resp = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: TOKEN, acao, ...extra })
+  });
+  if (resp.status === 401) {
+    document.getElementById('erro-login').innerText = 'Token inválido.';
+    document.getElementById('login-box').style.display = 'block';
+    document.getElementById('painel').style.display = 'none';
+    throw new Error('Token inválido');
+  }
+  return resp.json();
+}
+
+function badgeLabel(tipo, status) {
+  if (status === 'concluido') return 'Concluído';
+  if (tipo === 'duvida_valor') return 'Dúvida';
+  if (tipo === 'cancelamento') return 'Cancelamento';
+  if (tipo === 'remarcacao') return 'Remarcação';
+  return 'Agendamento';
+}
+
+function badgeClasse(tipo, status) {
+  if (status === 'concluido') return 'concluido';
+  return tipo || 'novo';
+}
+
+function renderCard(item) {
+  const ehDuvida = item.tipo_solicitacao === 'duvida_valor';
+
+  const camposAgendamento = `
+    <div class="campo"><label>Serviço</label><div class="valor">${item.servico || '—'}</div></div>
+    <div class="campo"><label>Médico</label><div class="valor">${item.medico || '—'}</div></div>
+    <div class="campo"><label>Convênio</label><div class="valor">${item.convenio || '—'}</div></div>
+    <div class="campo"><label>Preferência</label><div class="valor">${item.preferencia || '—'}</div></div>
+    <div class="campo"><label>Nascimento</label><div class="valor">${item.nascimento || '—'}</div></div>
+    <div class="campo"><label>CPF</label><div class="valor">${item.cpf || '—'}</div></div>
+    ${item.exames_solicitados ? `
+    <div class="campo full"><label>Exames no mesmo dia</label><div class="valor">${item.exames_solicitados}</div></div>
+    ` : ''}
+  `;
+
+  const camposDuvida = `
+    <div class="campo full"><label>Pergunta</label><div class="valor">${item.pergunta || '—'}</div></div>
+  `;
+
+  // Cancelamento/remarcação: mostra as datas em vez dos campos de agendamento.
+  // A "nova data" só aparece em remarcação (cancelamento não tem).
+  const ehCancelamento = item.tipo_solicitacao === 'cancelamento';
+  const ehRemarcacao = item.tipo_solicitacao === 'remarcacao';
+  const camposCancelamento = `
+    <div class="campo full"><label>Data da consulta/exame a alterar</label><div class="valor">${item.data_consulta_atual || '—'}</div></div>
+    ${ehRemarcacao ? `
+    <div class="campo full"><label>Nova data pretendida</label><div class="valor">${item.nova_data_pretendida || '—'}</div></div>
+    ` : ''}
+  `;
+
+  // Escolhe qual conjunto de campos mostrar no corpo do card.
+  let corpoCampos;
+  if (ehDuvida) {
+    corpoCampos = camposDuvida;
+  } else if (ehCancelamento || ehRemarcacao) {
+    corpoCampos = camposCancelamento;
+  } else {
+    corpoCampos = camposAgendamento;
+  }
+
+  return `
+    <div class="card">
+      <div class="card-header">
+        <div class="nome">${item.nome || 'sem identificação'}</div>
+        <span class="badge ${badgeClasse(item.tipo_solicitacao, item.status)}">${badgeLabel(item.tipo_solicitacao, item.status)}</span>
+      </div>
+      <div class="card-body">
+        <div class="campo"><label>Telefone</label><div class="valor">${item.telefone || '—'}</div></div>
+        <div class="campo"><label>Criado em</label><div class="valor">${new Date(item.created_at).toLocaleString('pt-BR')}</div></div>
+        ${corpoCampos}
+      </div>
+      <div class="card-footer">
+        ${item.status === 'concluido'
+          ? ''
+          : `<button class="btn" onclick="concluir(${item.id})">Marcar como concluído</button>`}
+      </div>
+    </div>
+  `;
+}
+
+async function carregar() {
+  try {
+    const resp = await chamar('listar');
+    const cards = resp.cards || [];
+    const lista = document.getElementById('lista');
+    if (cards.length === 0) {
+      lista.innerHTML = '<div class="vazio">Nenhum teste registrado ainda.</div>';
+      return;
+    }
+    lista.innerHTML = cards.map(renderCard).join('');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function concluir(id) {
+  await chamar('concluir', { id });
+  carregar();
+}
+</script>
+
+</body>
+</html>
